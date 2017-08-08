@@ -4,6 +4,11 @@ blockhash
 This is a perceptual image hash calculation tool based on algorithm descibed in
 Block Mean Value Based Image Perceptual Hashing by Bian Yang, Fan Gu and Xiamu Niu.
 
+Fork
+-----
+The purpose of the fork is to allow for a large number of files to be hashed in parallel.
+
+
 Build and install
 -----------------
 
@@ -16,19 +21,12 @@ On Fedora and friends:
 
     sudo dnf install ImageMagick-devel
 
-To build blockhash cd to the source directory and type:
 
-    ./waf configure
-    ./waf
-
-The program binary will land in `./build`. To install it to `/usr/local/bin/` type:
-
-    ./waf install
 
 Usage
 -----
 
-Run `blockhash [list of images]` for calculating hashes.
+Run `blockhash pathto_filelist.txt` for calculating hashes.
 
 Run `blockhash --help` for the list of options.
 

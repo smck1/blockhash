@@ -4,3 +4,11 @@
 
 # build directory
 build
+
+# visual studio
+.suo
+*.sdf
+*.vcxproj.*
+Debug/
+Release/
+.vs

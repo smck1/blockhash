@@ -365,19 +365,25 @@ int main (int argc, char **argv) {
     int quick = 0;
     int debug = 0;
     int bits = 16;
+	int threads = 4;
+	char * filelist;
+	char * outfile;
 
     int option_index = 0;
     int c;
 
     struct option long_options[] = {
-        {"help",    no_argument,        0, 'h'},
-        {"quick",   no_argument,        0, 'q'},
-        {"bits",    required_argument,  0, 'b'},
-        {"debug",   no_argument,        0, 'd'},
-        {0, 0, 0, 0}
+        {"filenames",   required_argument,  0,	'f'},
+        {"quick",		no_argument,        0,	'q'},
+		{"outfile",		required_argument,	0,	'o'},
+		{"threads",		required_argument,	0,	't'},
+        {"bits",		required_argument,  0,	'b'},
+        {"debug",		no_argument,        0,	'd'},
+
+        {0, 0, 0, 0 , 0, 0}
     };
 
-    if (argc < 2) {
+    if (argc < 4) {
         help();
         exit(0);
     }
@@ -385,6 +391,24 @@ int main (int argc, char **argv) {
     while ((c = getopt_long(argc, argv, "hqb:d",
                  long_options, &option_index)) != -1) {
         switch (c) {
+		case 'f':
+			if (sscanf(optarg, "%s", &filelist) != 1) {
+				printf("Error: couldn't parse filelist argument\n");
+				exit(-1);
+			}
+			break;
+		case 'o':
+			if (sscanf(optarg, "%s", &outfile) != 1) {
+				printf("Error: couldn't parse outfile argument\n");
+				exit(-1);
+			}
+			break;
+		case 't':
+			if (sscanf(optarg, "%d", &threads) != 1) {
+				printf("Error: couldn't parse threads argument\n");
+				exit(-1);
+			}
+			break;
         case 'h':
             help();
             exit(0);
@@ -410,6 +434,10 @@ int main (int argc, char **argv) {
             exit(-1);
         }
     }
+
+	printf(filelist);
+	printf(outfile);
+	printf(threads);
 
     if (optind < argc) {
         while (optind < argc) {
