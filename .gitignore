@@ -1,3 +1,8 @@
+#filelists
+*.txt
+# hash output with -s
+*.csv
+
 # for projects that use Waf for building: http://code.google.com/p/waf/
 .waf-*
 .lock-*

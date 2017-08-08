@@ -20,6 +20,9 @@ the following command:
 On Fedora and friends:
 
     sudo dnf install ImageMagick-devel
+	
+Requires libboost thread, system and filesystem. 
+TODO: Make waf handle this.
 
 To build blockhash cd to the source directory and type:
 

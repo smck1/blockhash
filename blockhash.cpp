@@ -4,7 +4,9 @@
  * Copyright 2014 Commons Machinery http://commonsmachinery.se/
  * Distributed under an MIT license, please see LICENSE in the top dir.
  */
-
+#include <boost/asio/io_service.hpp>
+#include <boost/bind.hpp>
+#include <boost/thread/thread.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
@@ -14,12 +16,19 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <chrono>
+#include <thread>
+
 
 #ifdef MAGICKWAND_V7
 #include <MagickWand/MagickWand.h>
 #else
 #include <wand/MagickWand.h>
 #endif
+
+// Global counter
+std::atomic<int> completeCounter{0};
+
 
 // comparing functions for qsort
 
@@ -294,7 +303,7 @@ void blockhash(int bits, unsigned char *data, int width, int height, int **hash)
     free(blocks);
 }
 
-void process_image(char * fn, int bits, int quick, int debug)
+void process_image(char * fn, int bits, int quick, int debug, int semi)
 {
     int i;
     size_t width, height;
@@ -344,23 +353,32 @@ void process_image(char * fn, int bits, int quick, int debug)
     }
 
     char* hex = bits_to_hexhash(hash, bits*bits);
-    printf("%s  %s\n", hex, fn);
+    if (semi){
+      printf("%s;%s\n", hex, fn);
+    } else {
+      printf("%s  %s\n", hex, fn);
+    }
+
 
     free(hex);
     free(hash);
     free(image_data);
 
     DestroyMagickWand(magick_wand);
+    completeCounter++;
 }
 
 void help() {
-    printf("Usage: blockhash [-h|--help] [--quick] [--bits BITS] [--debug] filenames...\n"
+    printf("Usage: blockhash [-h|--help] [--threads THREADS] [-s] [--quick] [--bits BITS] [--debug] -f pathfile ...\n"
            "\n"
            "Optional arguments:\n"
+           "-t, --threads         Number of threads to use\n"
+           "-s, --semidelim       Use a semicolon as delimiter\n"
            "-h, --help            Show this help message and exit\n"
            "-q, --quick           Use quick hashing method.\n"
            "-b, --bits BITS       Create hash of size N^2 bits. Default: 16\n"
-           "--debug               Print hashes as 2D maps (for debugging)\n");
+           "--debug               Print hashes as 2D maps (for debugging)\n"
+         );
 }
 
 int main (int argc, char **argv) {
@@ -369,8 +387,9 @@ int main (int argc, char **argv) {
     int quick = 0;
     int debug = 0;
     int bits = 16;
-	int threads = 4;
-	char * filelist;
+    int semi = 0;
+	  int threads = 4;
+	  char * filelist;
 
     int option_index = 0;
     int c;
@@ -378,9 +397,10 @@ int main (int argc, char **argv) {
     struct option long_options[] = {
         {"filenames",   required_argument,  0,	'f'},
         {"quick",		no_argument,        0,	'q'},
-		{"threads",		required_argument,	0,	't'},
+		    {"threads",		required_argument,	0,	't'},
         {"bits",		required_argument,  0,	'b'},
         {"debug",		no_argument,        0,	'd'},
+        {"semidelim", no_argument,  0, 's'},
 
         {0, 0, 0, 0}
     };
@@ -390,7 +410,7 @@ int main (int argc, char **argv) {
         exit(0);
     }
 
-    while ((c = getopt_long(argc, argv, "hqb:df:t:",
+    while ((c = getopt_long(argc, argv, "hqb:df:t:s",
                  long_options, &option_index)) != -1) {
         switch (c) {
 		case 'f':
@@ -419,13 +439,14 @@ int main (int argc, char **argv) {
         case 'd':
             debug = 1;
             break;
+        case 's':
+            semi = 1;
+            break;
         case '?':
         default:
             exit(-1);
         }
     }
-	printf("Input file: %s\n", filelist);
-	printf("Threads: %d\n", threads);
 
 	// Read file names
 	std::vector<std::string> filenames;
@@ -437,17 +458,51 @@ int main (int argc, char **argv) {
 	}
 
 
-	for (size_t i = 0; i<filenames.size(); i++) {
-		process_image(filenames[i].c_str(), bits, quick, debug);
+
+  /*
+   * Create an asio::io_service and a thread_group (through pool in essence)
+   */
+  boost::asio::io_service ioService;
+  boost::thread_group threadpool;
+  /*
+   * This will start the ioService processing loop. All tasks
+   * assigned with ioService.post() will start executing.
+   */
+  boost::asio::io_service::work work(ioService);
+  /*
+   * Create worker threads
+   */
+  for (int i = 0; i < threads; ++i)
+    threadpool.create_thread(boost::bind(&boost::asio::io_service::run, &ioService));
+
+    /*
+     * This will assign tasks to the thread pool.
+     * More about boost::bind: "http://www.boost.org/doc/libs/1_54_0/libs/bind/bind.html#with_functions"
+     */
+    int counter=0;
+    for (size_t i=0; i<filenames.size(); i++){
+      if (counter<30000){
+          ioService.post(boost::bind(process_image, filenames[i].c_str(), bits, quick, debug, semi));
+          counter++;
+      } else {
+          counter = i - completeCounter;
+          //cout << +completeCounter << " " << +c << endl;
+          if (counter >30000){
+              std::this_thread::sleep_for(std::chrono::milliseconds(50));
+          }
+          ioService.post(boost::bind(process_image, filenames[i].c_str(), bits, quick, debug, semi));
+      }
     }
 
+    // Wait for jobs to finish
+    ioService.reset();
+    while (completeCounter < filenames.size()){
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    ioService.stop();
 
-	//if (optind < argc) {
-	//	while (optind < argc) {
-	//		process_image(argv[optind++], bits, quick, debug);
-	//	}	}
-
-    MagickWandTerminus();
+    // Clean up
+    MagickWandTerminus();;
 
     exit(0);
 }
