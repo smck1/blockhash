@@ -8,8 +8,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
-#include <string.h>
+#include <cstring>
 #include <math.h>
+#include <string>
+#include <iostream>
+#include <vector>
+#include <fstream>
 
 #ifdef MAGICKWAND_V7
 #include <MagickWand/MagickWand.h>
@@ -367,7 +371,6 @@ int main (int argc, char **argv) {
     int bits = 16;
 	int threads = 4;
 	char * filelist;
-	char * outfile;
 
     int option_index = 0;
     int c;
@@ -375,39 +378,26 @@ int main (int argc, char **argv) {
     struct option long_options[] = {
         {"filenames",   required_argument,  0,	'f'},
         {"quick",		no_argument,        0,	'q'},
-		{"outfile",		required_argument,	0,	'o'},
 		{"threads",		required_argument,	0,	't'},
         {"bits",		required_argument,  0,	'b'},
         {"debug",		no_argument,        0,	'd'},
 
-        {0, 0, 0, 0 , 0, 0}
+        {0, 0, 0, 0}
     };
 
-    if (argc < 4) {
+    if (argc < 2) {
         help();
         exit(0);
     }
 
-    while ((c = getopt_long(argc, argv, "hqb:d",
+    while ((c = getopt_long(argc, argv, "hqb:df:t:",
                  long_options, &option_index)) != -1) {
         switch (c) {
 		case 'f':
-			if (sscanf(optarg, "%s", &filelist) != 1) {
-				printf("Error: couldn't parse filelist argument\n");
-				exit(-1);
-			}
-			break;
-		case 'o':
-			if (sscanf(optarg, "%s", &outfile) != 1) {
-				printf("Error: couldn't parse outfile argument\n");
-				exit(-1);
-			}
+			filelist = optarg;
 			break;
 		case 't':
-			if (sscanf(optarg, "%d", &threads) != 1) {
-				printf("Error: couldn't parse threads argument\n");
-				exit(-1);
-			}
+			threads = std::stoi(optarg);
 			break;
         case 'h':
             help();
@@ -434,16 +424,28 @@ int main (int argc, char **argv) {
             exit(-1);
         }
     }
+	printf("Input file: %s\n", filelist);
+	printf("Threads: %d\n", threads);
 
-	printf(filelist);
-	printf(outfile);
-	printf(threads);
+	// Read file names
+	std::vector<std::string> filenames;
+	std::ifstream input(filelist);
+	for (std::string line; getline(input, line); )
+	{
+		//for each line, add it to the list of files
+		filenames.push_back(line);
+	}
 
-    if (optind < argc) {
-        while (optind < argc) {
-            process_image(argv[optind++], bits, quick, debug);
-        }
+
+	for (size_t i = 0; i<filenames.size(); i++) {
+		process_image(filenames[i].c_str(), bits, quick, debug);
     }
+
+
+	//if (optind < argc) {
+	//	while (optind < argc) {
+	//		process_image(argv[optind++], bits, quick, debug);
+	//	}	}
 
     MagickWandTerminus();
 

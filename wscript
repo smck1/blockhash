@@ -5,10 +5,10 @@ top = '.'
 out = 'build'
 
 def options(opt):
-    opt.load('compiler_c')
+    opt.load('compiler_cxx')
 
 def configure(conf):
-    conf.load('compiler_c')
+    conf.load('compiler_cxx')
 
     conf.check_cc(lib='m')
     conf.check_cfg(package='MagickWand', args=['--cflags', '--libs'])
@@ -18,9 +18,10 @@ def configure(conf):
 
 def build(bld):
     bld(
-        features='c cprogram',
-        source='blockhash.c',
+        features='cxx cxxprogram',
+        source='blockhash.cpp',
         target='blockhash',
         use=['MAGICKWAND', 'M'],
         cflags=['-O3'],
+		cxxflags=['-std=c++11','-fpermissive']
     )

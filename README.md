@@ -21,6 +21,14 @@ On Fedora and friends:
 
     sudo dnf install ImageMagick-devel
 
+To build blockhash cd to the source directory and type:
+
+    ./waf configure
+    ./waf
+
+The program binary will land in `./build`. To install it to `/usr/local/bin/` type:
+
+    ./waf install
 
 
 Usage
