@@ -22,7 +22,7 @@ for subdir, dirs, files in os.walk(path):
         fpath = os.path.abspath(os.path.join(subdir, f))
         fname, ext = os.path.splitext(fpath)
         ext = ext.lower()
-        if ext in [".jpeg",".jpg", ".png", ".gif"]:
+        if ext in [".jpeg",".jpg", ".png", ".gif", ".bmp"]:
             flist.append(fpath)
 
 
